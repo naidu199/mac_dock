@@ -14,15 +14,20 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       home: Scaffold(
         backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 20,
-              child: DockContainer(),
+        body: Center(
+          child: SizedBox(
+            height: 400,
+            width: 600,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned(
+                  bottom: 20,
+                  child: DockContainer(),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -67,10 +72,10 @@ class _DockState<T extends Object> extends State<Dock<T>>
   double? mouseX;
   double? dragX;
   int? dragIndex;
-  static const double maxScale = 1.3;
-  static const double influenceRange = 150;
+  static const double maxScale = 1.4;
+  static const double influenceRange = 120;
   static const double baseItemSize = 48.0;
-  static const double baseItemSpacing = 20.0;
+  static const double baseItemSpacing = 16.0;
   static const double itemWidth = baseItemSize + baseItemSpacing;
 
   late List<AnimationController> _positionControllers;
@@ -87,7 +92,8 @@ class _DockState<T extends Object> extends State<Dock<T>>
       _items.length,
       (index) => AnimationController(
         vsync: this,
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(
+            milliseconds: 400), // Slightly longer duration for spring effect
       ),
     );
 
@@ -99,7 +105,7 @@ class _DockState<T extends Object> extends State<Dock<T>>
       ).animate(
         CurvedAnimation(
           parent: _positionControllers[index],
-          curve: Curves.easeOutCubic,
+          curve: Curves.easeOutBack, // Spring curve for more natural movement
         ),
       ),
     );
@@ -115,7 +121,9 @@ class _DockState<T extends Object> extends State<Dock<T>>
     final distance = (mouseX! - itemX).abs();
     if (distance > influenceRange) return 1.0;
 
-    return 1.0 + (maxScale - 1.0) * math.pow(1 - distance / influenceRange, 2);
+    final scale =
+        1.0 + (maxScale - 1.0) * math.pow(1 - distance / influenceRange, 1.5);
+    return scale.clamp(1.0, maxScale);
   }
 
   List<double> _calculateScales(double containerWidth) {
@@ -130,6 +138,10 @@ class _DockState<T extends Object> extends State<Dock<T>>
   }
 
   double _calculateContainerWidth(List<double> scales) {
+    if (draggedItem != null) {
+      return (_items.length - 1) * itemWidth + baseItemSize + 32;
+    }
+
     double totalWidth = 0;
     for (int i = 0; i < _items.length; i++) {
       totalWidth += baseItemSize * scales[i];
@@ -144,38 +156,55 @@ class _DockState<T extends Object> extends State<Dock<T>>
     setState(() {
       dragX = x;
       if (draggedItem != null && dragIndex != null) {
-        final itemCenter = x + baseItemSize / 2;
-        final newIndex =
-            (itemCenter / itemWidth).round().clamp(0, _items.length - 1);
+        // Calculate the new index based on drag position
+        final newIndex = (x / itemWidth).round().clamp(0, _items.length - 1);
 
         if (newIndex != dragIndex) {
           final oldIndex = dragIndex!;
-          final direction = newIndex > oldIndex ? 1 : -1;
 
+          // Update positions for all items
           for (var i = 0; i < _items.length; i++) {
-            if (i == oldIndex) continue;
+            double targetPosition;
 
-            final shouldMove = direction > 0
-                ? i > oldIndex && i <= newIndex
-                : i < oldIndex && i >= newIndex;
-
-            if (shouldMove) {
-              final newPosition = _calculateBasePosition(i - direction);
-              _positions[i] = Tween<double>(
-                begin: _positions[i].value,
-                end: newPosition,
-              ).animate(_positionControllers[i]);
-              _positionControllers[i].forward(from: 0);
-            } else if (!shouldMove && i != oldIndex) {
-              // Reset position for items that don't need to move
-              final newPosition = _calculateBasePosition(i);
-              if (_positions[i].value != newPosition) {
-                _positions[i] = Tween<double>(
-                  begin: _positions[i].value,
-                  end: newPosition,
-                ).animate(_positionControllers[i]);
-                _positionControllers[i].forward(from: 0);
+            if (newIndex > oldIndex) {
+              // Moving right
+              if (i < oldIndex || i > newIndex) {
+                // Items outside the affected range stay in place
+                targetPosition = i * itemWidth;
+              } else if (i == oldIndex) {
+                // Dragged item
+                targetPosition = newIndex * itemWidth;
+              } else {
+                // Items in between shift left
+                targetPosition = (i - 1) * itemWidth;
               }
+            } else {
+              // Moving left
+              if (i < newIndex || i > oldIndex) {
+                // Items outside the affected range stay in place
+                targetPosition = i * itemWidth;
+              } else if (i == oldIndex) {
+                // Dragged item
+                targetPosition = newIndex * itemWidth;
+              } else {
+                // Items in between shift right
+                targetPosition = (i + 1) * itemWidth;
+              }
+            }
+
+            // Create and start the animation
+            _positions[i] = Tween<double>(
+              begin: _positions[i].value,
+              end: targetPosition,
+            ).animate(
+              CurvedAnimation(
+                parent: _positionControllers[i],
+                curve: Curves.easeOutBack,
+              ),
+            );
+
+            if (i != oldIndex) {
+              _positionControllers[i].forward(from: 0);
             }
           }
 
@@ -190,129 +219,115 @@ class _DockState<T extends Object> extends State<Dock<T>>
     return LayoutBuilder(
       builder: (context, constraints) {
         final scales = _calculateScales(constraints.maxWidth);
-        final containerWidth = _calculateContainerWidth(scales);
-        const containerHeight = baseItemSize * maxScale + 12;
+        final containerWidth = _calculateContainerWidth(scales) + 16;
+        const containerHeight = baseItemSize * maxScale + 24;
 
-        return Container(
-          padding: const EdgeInsets.all(8),
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: containerWidth,
-            height: containerHeight,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 15,
-                  spreadRadius: 5,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: containerWidth + 16,
+          height: containerHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 15,
+                spreadRadius: 5,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white.withOpacity(0.15),
+                  border: Border.all(
                     color: Colors.white.withOpacity(0.2),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
-                      width: 0.5,
-                    ),
+                    width: 0.5,
                   ),
-                  child: Center(
-                    child: MouseRegion(
-                      onHover: (event) {
-                        setState(() {
-                          mouseX = event.localPosition.dx;
-                        });
-                      },
-                      onExit: (event) {
-                        setState(() {
-                          mouseX = null;
-                        });
-                      },
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: _items.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final item = entry.value;
-                          final scale = scales[index];
+                ),
+                child: Center(
+                  child: MouseRegion(
+                    onHover: (event) =>
+                        setState(() => mouseX = event.localPosition.dx),
+                    onExit: (event) => setState(() => mouseX = null),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: _items.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final item = entry.value;
+                        final scale = scales[index];
 
-                          return AnimatedBuilder(
-                            animation: _positionControllers[index],
-                            builder: (context, child) {
-                              return Positioned(
-                                left: _positions[index].value,
-                                top:
-                                    (containerHeight - (baseItemSize * scale)) /
-                                        2,
-                                child: Draggable<T>(
-                                  data: item,
-                                  feedback: Transform.scale(
-                                    scale: maxScale,
-                                    child: _buildIcon(item, 1.0),
-                                  ),
-                                  childWhenDragging: Opacity(
-                                    opacity: 0.2,
-                                    child: _buildIcon(item, 1.0),
-                                  ),
-                                  onDragStarted: () {
-                                    setState(() {
-                                      draggedItem = item;
-                                      dragIndex = index;
-                                      mouseX = null;
-                                    });
-                                  },
-                                  onDragUpdate: (details) {
-                                    _updateDragPosition(
-                                        details.localPosition.dx);
-                                  },
-                                  onDragEnd: (_) {
-                                    setState(() {
-                                      if (dragIndex != null &&
-                                          dragIndex != index) {
-                                        final item = _items.removeAt(index);
-                                        _items.insert(dragIndex!, item);
-                                        _initializeAnimations();
-                                      }
-                                      draggedItem = null;
-                                      dragIndex = null;
-                                      dragX = null;
-                                    });
-                                  },
-                                  child: DragTarget<T>(
-                                    onWillAcceptWithDetails: (data) => true,
-                                    onAcceptWithDetails: (data) {
-                                      final oldIndex =
-                                          _items.indexOf(data.data);
-                                      final newIndex = _items.indexOf(item);
-                                      setState(() {
-                                        _items.removeAt(oldIndex);
-                                        _items.insert(newIndex, data.data);
-                                        _initializeAnimations();
-                                      });
-                                    },
-                                    builder:
-                                        (context, candidateData, rejectedData) {
-                                      return AnimatedScale(
-                                        duration:
-                                            const Duration(milliseconds: 100),
-                                        scale: scale,
-                                        child: _buildIcon(item, 1.0),
-                                      );
-                                    },
-                                  ),
+                        return AnimatedBuilder(
+                          animation: _positionControllers[index],
+                          builder: (context, child) {
+                            return Positioned(
+                              left: _positions[index].value,
+                              top: 10,
+//                               top: (containerHeight - (baseItemSize * scale)) / 3,
+                              child: Draggable<T>(
+                                data: item,
+                                feedback: Transform.scale(
+                                  scale: maxScale,
+                                  child: _buildIcon(item, 1.0),
                                 ),
-                              );
-                            },
-                          );
-                        }).toList(),
-                      ),
+                                childWhenDragging: const SizedBox(),
+                                onDragStarted: () {
+                                  setState(() {
+                                    draggedItem = item;
+                                    dragIndex = index;
+                                    mouseX = null;
+                                  });
+                                },
+                                onDragUpdate: (details) {
+                                  _updateDragPosition(details.localPosition.dx);
+                                },
+                                onDragEnd: (_) {
+                                  setState(() {
+                                    if (dragIndex != null &&
+                                        dragIndex != index) {
+                                      final item = _items.removeAt(index);
+                                      _items.insert(dragIndex!, item);
+                                      _initializeAnimations();
+                                    }
+                                    draggedItem = null;
+                                    dragIndex = null;
+                                    dragX = null;
+                                  });
+                                },
+                                child: DragTarget<T>(
+                                  onWillAcceptWithDetails: (data) => true,
+                                  onAcceptWithDetails: (data) {
+                                    final oldIndex = _items.indexOf(data.data);
+                                    final newIndex = _items.indexOf(item);
+                                    setState(() {
+                                      _items.removeAt(oldIndex);
+                                      _items.insert(newIndex, data.data);
+                                      _initializeAnimations();
+                                    });
+                                  },
+                                  builder:
+                                      (context, candidateData, rejectedData) {
+                                    return AnimatedScale(
+                                      duration:
+                                          const Duration(milliseconds: 150),
+                                      curve: Curves.easeOutQuint,
+                                      scale: scale,
+                                      child: _buildIcon(item, 1.0),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
                 ),
