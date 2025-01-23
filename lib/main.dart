@@ -12,17 +12,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
         backgroundColor: Colors.black,
         body: Center(
           child: SizedBox(
-            height: 400,
-            width: 600,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 Positioned(
-                  bottom: 20,
+                  bottom: 40,
                   child: DockContainer(),
                 ),
               ],
@@ -92,8 +91,7 @@ class _DockState<T extends Object> extends State<Dock<T>>
       _items.length,
       (index) => AnimationController(
         vsync: this,
-        duration: const Duration(
-            milliseconds: 400), // Slightly longer duration for spring effect
+        duration: const Duration(milliseconds: 400),
       ),
     );
 
@@ -105,7 +103,7 @@ class _DockState<T extends Object> extends State<Dock<T>>
       ).animate(
         CurvedAnimation(
           parent: _positionControllers[index],
-          curve: Curves.easeOutBack, // Spring curve for more natural movement
+          curve: Curves.easeOutBack,
         ),
       ),
     );
@@ -149,50 +147,39 @@ class _DockState<T extends Object> extends State<Dock<T>>
         totalWidth += baseItemSpacing;
       }
     }
-    return totalWidth + 32;
+    return totalWidth + 28;
   }
 
   void _updateDragPosition(double x) {
     setState(() {
       dragX = x;
       if (draggedItem != null && dragIndex != null) {
-        // Calculate the new index based on drag position
         final newIndex = (x / itemWidth).round().clamp(0, _items.length - 1);
 
         if (newIndex != dragIndex) {
           final oldIndex = dragIndex!;
 
-          // Update positions for all items
           for (var i = 0; i < _items.length; i++) {
             double targetPosition;
 
             if (newIndex > oldIndex) {
-              // Moving right
               if (i < oldIndex || i > newIndex) {
-                // Items outside the affected range stay in place
                 targetPosition = i * itemWidth;
               } else if (i == oldIndex) {
-                // Dragged item
                 targetPosition = newIndex * itemWidth;
               } else {
-                // Items in between shift left
                 targetPosition = (i - 1) * itemWidth;
               }
             } else {
-              // Moving left
               if (i < newIndex || i > oldIndex) {
-                // Items outside the affected range stay in place
                 targetPosition = i * itemWidth;
               } else if (i == oldIndex) {
-                // Dragged item
                 targetPosition = newIndex * itemWidth;
               } else {
-                // Items in between shift right
                 targetPosition = (i + 1) * itemWidth;
               }
             }
 
-            // Create and start the animation
             _positions[i] = Tween<double>(
               begin: _positions[i].value,
               end: targetPosition,
@@ -254,8 +241,9 @@ class _DockState<T extends Object> extends State<Dock<T>>
                 ),
                 child: Center(
                   child: MouseRegion(
-                    onHover: (event) =>
-                        setState(() => mouseX = event.localPosition.dx),
+                    onHover: (event) => setState(() {
+                      mouseX = event.localPosition.dx;
+                    }),
                     onExit: (event) => setState(() => mouseX = null),
                     child: Stack(
                       clipBehavior: Clip.none,
@@ -270,7 +258,6 @@ class _DockState<T extends Object> extends State<Dock<T>>
                             return Positioned(
                               left: _positions[index].value,
                               top: 10,
-//                               top: (containerHeight - (baseItemSize * scale)) / 3,
                               child: Draggable<T>(
                                 data: item,
                                 feedback: Transform.scale(
