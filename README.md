@@ -1,16 +1,40 @@
-# mac_dock
+# **Mac-style Dock** 🚀
 
-A new Flutter project.
+A Flutter-based **Mac-style Dock** with smooth hover and drag interactions. This project provides a dynamic, interactive dock with customizable scaling and reordering capabilities.
 
-## Getting Started
+## 📖 **Overview of Documentation**
 
-This project is a starting point for a Flutter application.
+The existing documentation provides detailed explanations of the following components:
 
-A few resources to get you started if this is your first Flutter project:
+### **1. Application Structure**
+- **`main.dart`** → Defines the application's entry point and initializes the `HomePage`.
+- **`HomePage.dart`** → Hosts the `MacDock` widget and manages the UI layout.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### **2. `MacDock<T>` Widget**
+A customizable dock that supports:
+- ✅ **Dynamic item scaling** on hover.
+- ✅ **Smooth drag-and-drop reordering** of icons.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The documentation includes:
+- Usage guidelines.
+- Explanation of core functionalities.
+- Customization options for developers.
+
+### **3. State Management (`MacDockState<T>`)**
+Handles essential logic for:
+- **Hover scaling calculations** to create a smooth zoom effect.
+- **Drag interactions** for reordering icons dynamically.
+
+#### 🔹 **Key Method: `calculateItemValue()`**
+- Determines item scaling based on cursor distance.
+- Ensures a responsive and smooth animation effect.
+
+### **4. Drag Placeholder (`PlaceholderWidget`)**
+A temporary widget used during drag operations to maintain smooth animations.
+
+The documentation covers:
+- **Role of the placeholder** in drag-and-drop interactions.
+- **Customization options** to modify its behavior.
+
+## 🛠 **How It Works**
+For implementation details, customization options, and best practices, refer to the **in-code documentation** provided within the project files.
