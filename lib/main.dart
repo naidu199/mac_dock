@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 
+/// The entry point of the Flutter application.
 void main() {
   runApp(const MyApp());
 }
 
+/// The root widget of the application [MyApp] material app.
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -17,6 +19,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// [HomePage] Home page of the application.
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -29,6 +32,7 @@ class HomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // A Mac-style dock with interactive icons.
             MacDock<IconData>(
               items: const [
                 Icons.person,
@@ -39,6 +43,8 @@ class HomePage extends StatelessWidget {
               ],
               builder: (item, scale) {
                 return Container(
+                  width: scale * 42,
+                  height: scale * 41,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color: Colors
@@ -55,7 +61,7 @@ class HomePage extends StatelessWidget {
                     child: Icon(
                       item,
                       color: Colors.white,
-                      size: 32 * scale,
+                      size: 24 * scale * 0.8,
                     ),
                   ),
                 );
@@ -63,7 +69,7 @@ class HomePage extends StatelessWidget {
             ),
             const SizedBox(
               height: 32,
-            )
+            ),
           ],
         ),
       ),
@@ -71,25 +77,56 @@ class HomePage extends StatelessWidget {
   }
 }
 
+/// A Mac-style dock widget that displays a list of items with hover and dragging effects.
+///
+/// The [MacDock] widget allows users to interact with items in a dock-like interface.
+/// Items can be hovered over to scale up and dragged to reorder their positions with animations.
+///
+/// Example:
+/// ```dart
+/// MacDock<IconData>(
+///   items: const [Icons.person, Icons.message, Icons.call],
+///   builder: (item, scale) {
+///     return Icon(item, size: 24 * scale);
+///   },
+/// );
+/// ```
 class MacDock<T extends Object> extends StatefulWidget {
+  /// Creates a [MacDock] widget.
+  ///
+  /// - [items]: The list of items to display in the dock.
+  /// - [builder]: A function that builds the widget for each item.
   const MacDock({
     super.key,
     this.items = const [],
     required this.builder,
   });
 
+  /// The list of items to display in the dock.
   final List<T> items;
+
+  /// A function that builds the widget for each item.
+  ///
+  /// - [item]: The current item to build.
+  /// - [scale]: The scale factor to apply to the item based on hover and dragging state.
   final Widget Function(T item, double scale) builder;
 
   @override
   State<MacDock<T>> createState() => MacDockState<T>();
 }
 
+/// The state class for [MacDock].
 class MacDockState<T extends Object> extends State<MacDock<T>> {
   late final List<T> items = widget.items.toList();
   int? _hoveredIndex;
   int? _draggedIndex;
 
+  /// Calculates the size and position of an item based on its distance from the hovered item.
+  ///
+  /// - [index]: The index of the current item.
+  /// - [initVal]: The initial value (used when the item is not hovered).
+  /// - [maxVal]: The maximum value (used when the item is hovered).
+  /// - [nonHoverMaxVal]: The value for items near the hovered item.
   double calculatedItemValue({
     required int index,
     required double initVal,
@@ -106,11 +143,11 @@ class MacDockState<T extends Object> extends State<MacDock<T>> {
     if (distance == 0) {
       return maxVal;
     } else if (distance == 1) {
-      return lerpDouble(initVal, maxVal, 0.5)!;
+      return lerpDouble(initVal, maxVal, 0.75)!;
     } else if (distance == 2) {
-      return lerpDouble(initVal, maxVal, 0.25)!;
+      return lerpDouble(initVal, maxVal, 0.5)!;
     } else if (distance < 3 && distance <= itemsAffected) {
-      return lerpDouble(initVal, nonHoverMaxVal, .15)!;
+      return lerpDouble(initVal, nonHoverMaxVal, .25)!;
     } else {
       return initVal;
     }
@@ -120,18 +157,18 @@ class MacDockState<T extends Object> extends State<MacDock<T>> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.black26,
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.black.withOpacity(0.3),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.4),
-            blurRadius: 10,
+            blurRadius: 20,
             spreadRadius: 2,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: items.asMap().entries.map((val) {
@@ -140,9 +177,9 @@ class MacDockState<T extends Object> extends State<MacDock<T>> {
 
           final calculatedSize = calculatedItemValue(
             index: index,
-            initVal: 48,
-            maxVal: 72,
-            nonHoverMaxVal: 48,
+            initVal: 52,
+            maxVal: 80,
+            nonHoverMaxVal: 52,
           );
 
           return DragTarget<T>(
@@ -157,10 +194,9 @@ class MacDockState<T extends Object> extends State<MacDock<T>> {
               });
             },
             onWillAcceptWithDetails: (droppedItem) {
-              final draggedIndex = items.indexOf(droppedItem.data);
               setState(() {
                 _hoveredIndex = index;
-                _draggedIndex = draggedIndex;
+                _draggedIndex = items.indexOf(droppedItem.data);
               });
               return true;
             },
@@ -176,8 +212,8 @@ class MacDockState<T extends Object> extends State<MacDock<T>> {
                 feedback: Material(
                   color: Colors.transparent,
                   child: Transform.scale(
-                    scale: 1.3,
-                    child: widget.builder(item, calculatedSize / 68),
+                    scale: 1.2,
+                    child: widget.builder(item, 1.2),
                   ),
                 ),
                 childWhenDragging: const PlaceholderWidget(),
@@ -193,14 +229,14 @@ class MacDockState<T extends Object> extends State<MacDock<T>> {
                     });
                   },
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
+                    duration: const Duration(milliseconds: 200),
                     transform: Matrix4.identity()
                       ..translate(
                         0.0,
                         calculatedItemValue(
                           index: index,
                           initVal: 0,
-                          maxVal: -15,
+                          maxVal: -10,
                           nonHoverMaxVal: -4,
                         ),
                         0.0,
@@ -208,7 +244,7 @@ class MacDockState<T extends Object> extends State<MacDock<T>> {
                     margin: EdgeInsets.only(
                       left: _draggedIndex != null
                           ? _hoveredIndex == index
-                              ? 68
+                              ? 64
                               : 0
                           : 0,
                       right: _draggedIndex != null
@@ -217,13 +253,13 @@ class MacDockState<T extends Object> extends State<MacDock<T>> {
                               : 0
                           : 0,
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                     constraints: BoxConstraints(
-                      minWidth: 48,
+                      minWidth: 52,
                       maxWidth: calculatedSize,
                       maxHeight: calculatedSize,
                     ),
-                    child: widget.builder(item, calculatedSize / 68),
+                    child: widget.builder(item, 1.2),
                   ),
                 ),
               );
@@ -235,6 +271,7 @@ class MacDockState<T extends Object> extends State<MacDock<T>> {
   }
 }
 
+/// A placeholder widget used to animate its size when dragged to create a smooth animation effect.
 class PlaceholderWidget extends StatefulWidget {
   const PlaceholderWidget({super.key});
 
